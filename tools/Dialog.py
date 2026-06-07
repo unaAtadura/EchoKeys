@@ -57,8 +57,7 @@ class DialogWindow(QWidget):
         self.update_size()
 
     def update_size(self):
-        font = QFont("Arial", 14, QFont.Bold)
-        fm = QFontMetrics(font)
+        fm = QFontMetrics(self.current_font)
         text_width = fm.width(self.text)
         padding = 20
         window_width = text_width + padding * 2
