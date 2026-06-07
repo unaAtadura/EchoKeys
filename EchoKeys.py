@@ -4,6 +4,13 @@ from datetime import datetime
 from PyQt5.QtWidgets import (QApplication, QWidget, QSystemTrayIcon, QMenu, QAction, QStyle)
 from PyQt5.QtCore import Qt, QPoint
 from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QRegion
+
+QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
+QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
+try:
+    QApplication.setHighDpiScaleFactorRoundingPolicy(Qt.HighDpiScaleFactorRoundingPolicy.PassThrough)
+except AttributeError:
+    pass
 from tools.Log import LogWindow
 from tools.Dialog import DialogWindow
 from tools.key_mouse_monitor import KeyMouseMonitor
