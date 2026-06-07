@@ -1,3 +1,4 @@
+from datetime import datetime
 from PyQt5.QtCore import QObject, pyqtSignal
 from pynput import keyboard, mouse
 
@@ -28,6 +29,7 @@ class KeyMouseMonitor(QObject):
             'Key.menu',
             'Key.alt_gr'
         }
+        self.last_scroll_time = None
 
     def start(self):
         if self.is_monitoring:
@@ -178,6 +180,12 @@ class KeyMouseMonitor(QObject):
 
     def on_mouse_scroll_callback(self, x, y, dx, dy):
         try:
+            current_time = datetime.now()
+            if self.last_scroll_time is not None:
+                time_diff = (current_time - self.last_scroll_time).total_seconds()
+                if time_diff < 1.0:
+                    return
+            self.last_scroll_time = current_time
             self.mouse_scrolled.emit(str(x), str(y), str(dx), str(dy))
         except Exception as e:
             print(f"Scroll error: {e}")

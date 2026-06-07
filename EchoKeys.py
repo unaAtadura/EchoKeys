@@ -120,6 +120,24 @@ def main():
     last_key_time = None
     last_key_is_alphanum = False
     
+    log_history = []
+    
+    def add_log_history(message, color="#d4d4d4"):
+        timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
+        log_history.append((timestamp, message, color))
+    
+    def on_log_window_opened():
+        log_window.clear_log()
+        for timestamp, message, color in log_history:
+            log_window.append_log_with_timestamp(timestamp, message, color)
+        monitor.stop()
+    
+    def on_log_window_closed():
+        monitor.start()
+    
+    log_window.window_opened.connect(on_log_window_opened)
+    log_window.window_closed.connect(on_log_window_closed)
+    
     modifier_key_names = ['ctrl', 'shift', 'alt', 'cmd', 'fn', 'menu']
     special_key_names = ['space', 'enter', 'tab', 'escape', 'backspace', 'delete', 'insert', 
                          'home', 'end', 'page_up', 'page_down', 'up', 'down', 'left', 'right',
@@ -220,8 +238,8 @@ def main():
                 if dialog.height() == DIALOG_HEIGHT_LARGE:
                     dialog.set_height(DIALOG_HEIGHT_SMALL)
                     dialog.set_to_old_style()
-                dialog.stop_destroy_timer()
-                dialog.start_destroy_timer(5)
+                    dialog.stop_destroy_timer()
+                    dialog.start_destroy_timer(5)
             
             if len(dialogs) >= MAX_DIALOGS:
                 oldest = dialogs.pop(0)
@@ -240,22 +258,26 @@ def main():
     
     def on_key_press(key_str):
         key_str = key_str.replace("Key.", "")
+        add_log_history(f"[键盘按下] {key_str}", "#66ff66")
         if log_window.isVisible():
             log_window.append_log(f"[键盘按下] {key_str}", "#66ff66")
         show_key_dialog(key_str)
     
     def on_key_release(key_str):
         key_str = key_str.replace("Key.", "")
+        add_log_history(f"[键盘释放] {key_str}", "#66ccff")
         if log_window.isVisible():
             log_window.append_log(f"[键盘释放] {key_str}", "#66ccff")
     
     def on_mouse_press(button, x, y):
         if button.startswith("release:"):
             button_name = button.replace("release:Button.", "")
+            add_log_history(f"[鼠标释放] {button_name} (位置: {x}, {y})", "#ff9999")
             if log_window.isVisible():
                 log_window.append_log(f"[鼠标释放] {button_name} (位置: {x}, {y})", "#ff9999")
         else:
             button_name = button.replace("Button.", "")
+            add_log_history(f"[鼠标点击] {button_name} (位置: {x}, {y})", "#66ccff")
             if log_window.isVisible():
                 log_window.append_log(f"[鼠标点击] {button_name} (位置: {x}, {y})", "#66ccff")
             if window.contains_global_point(int(x), int(y)):
@@ -266,6 +288,7 @@ def main():
         direction = "上滚" if int(dy) > 0 else "下滚"
         if int(dx) != 0:
             direction = "左滚" if int(dx) < 0 else "右滚"
+        add_log_history(f"[鼠标滚轮] {direction} (位置: {x}, {y})", "#ff9966")
         if log_window.isVisible():
             log_window.append_log(f"[鼠标滚轮] {direction} (位置: {x}, {y})", "#ff9966")
         show_key_dialog(f"[滚轮] {direction}")

@@ -2,9 +2,13 @@ import sys
 from datetime import datetime
 from PyQt5.QtWidgets import QApplication, QWidget, QVBoxLayout, QTextEdit
 from PyQt5.QtGui import QFont, QTextCursor
+from PyQt5.QtCore import pyqtSignal
 
 
 class LogWindow(QWidget):
+    window_opened = pyqtSignal()
+    window_closed = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.init_ui()
@@ -33,8 +37,24 @@ class LogWindow(QWidget):
         cursor.movePosition(QTextCursor.End)
         self.log_text.setTextCursor(cursor)
 
+    def append_log_with_timestamp(self, timestamp, message, color="#d4d4d4"):
+        self.log_text.append(
+            f'<span style="color: #888888;">[{timestamp}]</span> <span style="color: {color};">{message}</span>'
+        )
+        cursor = self.log_text.textCursor()
+        cursor.movePosition(QTextCursor.End)
+        self.log_text.setTextCursor(cursor)
+
     def clear_log(self):
         self.log_text.clear()
+
+    def showEvent(self, event):
+        super().showEvent(event)
+        self.window_opened.emit()
+
+    def closeEvent(self, event):
+        self.window_closed.emit()
+        super().closeEvent(event)
 
 
 def main():
