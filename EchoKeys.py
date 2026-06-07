@@ -15,11 +15,18 @@ from tools.Log import LogWindow
 from tools.Dialog import DialogWindow
 from tools.key_mouse_monitor import KeyMouseMonitor
 from tools.mouse_highlight import MouseHighlightWindow
+from tools.ToolTip import ToolTipWindow
+from PyQt5.QtCore import pyqtSignal
+
+
 class CircleWindow(QWidget):
+    position_changed = pyqtSignal()
+
     def __init__(self):
         super().__init__()
         self.dragging = False
         self.drag_pos = QPoint()
+        self._original_pos = None
         self.init_ui()
     def init_ui(self):
         self.setWindowTitle("EchoKeys")
@@ -41,6 +48,7 @@ class CircleWindow(QWidget):
         if event.button() == Qt.LeftButton:
             self.dragging = True
             self.drag_pos = event.globalPos() - self.frameGeometry().topLeft()
+            self._original_pos = self.pos()
             event.accept()
     def mouseMoveEvent(self, event):
         if self.dragging and event.buttons() & Qt.LeftButton:
@@ -56,6 +64,11 @@ class CircleWindow(QWidget):
             new_y = max(0, min(new_pos.y(), screen_height - window_height))
             
             self.move(new_x, new_y)
+            
+            if self._original_pos is not None and (self.pos().x() != self._original_pos.x() or self.pos().y() != self._original_pos.y()):
+                self.position_changed.emit()
+                self._original_pos = None
+            
             event.accept()
     def mouseReleaseEvent(self, event):
         if event.button() == Qt.LeftButton:
@@ -315,6 +328,22 @@ def main():
     tray_icon = create_tray_icon(app, window, log_window)
     tray_icon.show()
     window.show()
+    
+    tooltip_window = ToolTipWindow()
+    window.position_changed.connect(tooltip_window.close_tooltip)
+    
+    circle_geom = window.geometry()
+    tooltip_width = tooltip_window.width()
+    tooltip_height = tooltip_window.height()
+    tooltip_x = circle_geom.center().x() - tooltip_width // 2
+    tooltip_y = circle_geom.top() - tooltip_height - 10
+    
+    screen_geometry = QApplication.primaryScreen().geometry()
+    tooltip_x = max(0, min(tooltip_x, screen_geometry.width() - tooltip_width))
+    tooltip_y = max(0, min(tooltip_y, screen_geometry.height() - tooltip_height))
+    
+    tooltip_window.move(tooltip_x, tooltip_y)
+    tooltip_window.show()
     
     exit_code = app.exec_()
     monitor.stop()
