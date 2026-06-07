@@ -123,6 +123,14 @@ def create_tray_icon(app, window, log_window):
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
+    
+    dpi_scale = app.primaryScreen().devicePixelRatio()
+    
+    def to_qt_logical(phys_x, phys_y):
+        if dpi_scale == 1.0:
+            return int(phys_x), int(phys_y)
+        return int(int(phys_x) / dpi_scale), int(int(phys_y) / dpi_scale)
+    
     window = CircleWindow()
     log_window = LogWindow()
     
@@ -300,7 +308,8 @@ def main():
             add_log_history(f"[鼠标点击] {button_name} (位置: {x}, {y})", "#66ccff")
             if log_window.isVisible():
                 log_window.append_log(f"[鼠标点击] {button_name} (位置: {x}, {y})", "#66ccff")
-            if window.contains_global_point(int(x), int(y)):
+            qx, qy = to_qt_logical(x, y)
+            if window.contains_global_point(qx, qy):
                 return
             show_key_dialog(f"[鼠标] {button_name}")
     
