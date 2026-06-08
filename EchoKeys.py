@@ -1,9 +1,9 @@
 import sys
 import re
 from datetime import datetime
-from PyQt5.QtWidgets import (QApplication, QWidget, QSystemTrayIcon, QMenu, QAction, QStyle)
+from PyQt5.QtWidgets import (QApplication, QWidget, QSystemTrayIcon, QMenu, QAction)
 from PyQt5.QtCore import Qt, QPoint
-from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QRegion
+from PyQt5.QtGui import QColor, QPainter, QPen, QBrush, QRegion, QIcon, QPixmap, QFont, QPainterPath
 
 QApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
 QApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
@@ -85,9 +85,62 @@ class CircleWindow(QWidget):
         dx = local_point.x() - center_x
         dy = local_point.y() - center_y
         return dx * dx + dy * dy <= radius * radius
+def create_echokeys_icon(size=64):
+    pixmap = QPixmap(size, size)
+    pixmap.fill(Qt.transparent)
+    
+    painter = QPainter(pixmap)
+    painter.setRenderHint(QPainter.Antialiasing)
+    
+    bg_color = QColor(100, 150, 255, 255)
+    border_color = QColor(50, 100, 200, 255)
+    
+    padding = int(size * 0.06)
+    diameter = size - padding * 2
+    center = size // 2
+    radius = diameter // 2
+    
+    path = QPainterPath()
+    path.addEllipse(center - radius, center - radius, diameter, diameter)
+    
+    painter.setPen(Qt.NoPen)
+    painter.setBrush(QBrush(bg_color))
+    painter.drawPath(path)
+    
+    painter.setPen(QPen(border_color, int(size * 0.04)))
+    painter.setBrush(Qt.NoBrush)
+    painter.drawPath(path)
+    
+    font_size = int(size * 0.5)
+    font = QFont()
+    font.setBold(True)
+    font.setPointSizeF(font_size)
+    painter.setFont(font)
+    
+    text_color = QColor(255, 255, 255, 255)
+    painter.setPen(text_color)
+    
+    text_rect = pixmap.rect()
+    painter.drawText(text_rect, Qt.AlignCenter, "EK")
+    
+    painter.end()
+    return QIcon(pixmap)
+
+def try_load_icon_from_file(file_path):
+    import os
+    if file_path and os.path.exists(file_path):
+        pixmap = QPixmap(file_path)
+        if not pixmap.isNull():
+            return QIcon(pixmap)
+    return None
+
 def create_tray_icon(app, window, log_window):
+    import os
+    icon_path = os.path.join(os.path.dirname(sys.argv[0]) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), "icon.png")
+    icon = try_load_icon_from_file(icon_path)
+    if icon is None:
+        icon = create_echokeys_icon(64)
     tray_icon = QSystemTrayIcon(app)
-    icon = app.style().standardIcon(QStyle.SP_ComputerIcon)
     tray_icon.setIcon(icon)
     tray_icon.setToolTip("EchoKeys")
     menu = QMenu()
