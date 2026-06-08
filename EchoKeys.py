@@ -147,6 +147,12 @@ def main():
     dialogs = []
     last_key_time = None
     last_key_is_alphanum = False
+    last_special_key = None
+    last_special_key_count = 0
+    last_special_key_time = None
+    last_scroll_direction = None
+    last_scroll_count = 0
+    last_scroll_time = None
     
     log_history = []
     
@@ -171,6 +177,9 @@ def main():
                          'home', 'end', 'page_up', 'page_down', 'up', 'down', 'left', 'right',
                          'caps_lock', 'num_lock', 'scroll_lock', 'print_screen', 'pause',
                          'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12']
+    
+    count_special_keys = ['space', 'enter', 'backspace', 'delete', 'up', 'down', 'left', 'right',
+                          '[鼠标] left', '[鼠标] right']
     
     def is_alphanum_or_symbol(key_str):
         lower_key = key_str.lower().strip()
@@ -241,15 +250,26 @@ def main():
     
     def show_key_dialog(key_str):
         nonlocal last_key_time, last_key_is_alphanum
+        nonlocal last_special_key, last_special_key_count, last_special_key_time
         
         current_time = datetime.now()
         current_is_alphanum = is_alphanum_or_symbol(key_str)
+        current_is_count_special = key_str in count_special_keys
         
         should_merge = False
+        should_count = False
+        
         if dialogs and last_key_time is not None:
             time_diff = (current_time - last_key_time).total_seconds()
             if time_diff < 1.0 and last_key_is_alphanum and current_is_alphanum:
                 should_merge = True
+        
+        if current_is_count_special and dialogs:
+            if last_special_key == key_str and last_special_key_time is not None:
+                time_diff = (current_time - last_special_key_time).total_seconds()
+                if time_diff < 1.0:
+                    should_count = True
+                    last_special_key_count += 1
         
         if should_merge:
             latest_dialog = dialogs[-1]
@@ -259,6 +279,14 @@ def main():
             latest_dialog.stop_destroy_timer()
             latest_dialog.start_destroy_timer(5)
             update_dialog_positions()
+        elif should_count:
+            latest_dialog = dialogs[-1]
+            display_text = f"{key_str} x{last_special_key_count}"
+            latest_dialog.set_text(display_text)
+            latest_dialog.stop_destroy_timer()
+            latest_dialog.start_destroy_timer(5)
+            update_dialog_positions()
+            last_special_key_time = current_time
         else:
             direction = get_dialog_direction()
             
@@ -280,6 +308,15 @@ def main():
             dialogs.append(new_dialog)
             
             update_dialog_positions()
+            
+            if current_is_count_special:
+                last_special_key = key_str
+                last_special_key_count = 1
+                last_special_key_time = current_time
+            else:
+                last_special_key = None
+                last_special_key_count = 0
+                last_special_key_time = None
         
         last_key_time = current_time
         last_key_is_alphanum = current_is_alphanum
@@ -314,13 +351,37 @@ def main():
             show_key_dialog(f"[鼠标] {button_name}")
     
     def on_mouse_scroll(x, y, dx, dy):
+        nonlocal last_scroll_direction, last_scroll_count, last_scroll_time
+        
         direction = "上滚" if int(dy) > 0 else "下滚"
         if int(dx) != 0:
             direction = "左滚" if int(dx) < 0 else "右滚"
         add_log_history(f"[鼠标滚轮] {direction} (位置: {x}, {y})", "#ff9966")
         if log_window.isVisible():
             log_window.append_log(f"[鼠标滚轮] {direction} (位置: {x}, {y})", "#ff9966")
-        show_key_dialog(f"[滚轮] {direction}")
+        
+        current_time = datetime.now()
+        should_count = False
+        
+        if last_scroll_direction == direction and last_scroll_time is not None and dialogs:
+            time_diff = (current_time - last_scroll_time).total_seconds()
+            if time_diff < 1.0:
+                should_count = True
+                last_scroll_count += 1
+        
+        if should_count:
+            latest_dialog = dialogs[-1]
+            display_text = f"[滚轮] {direction} x{last_scroll_count}"
+            latest_dialog.set_text(display_text)
+            latest_dialog.stop_destroy_timer()
+            latest_dialog.start_destroy_timer(5)
+            update_dialog_positions()
+            last_scroll_time = current_time
+        else:
+            show_key_dialog(f"[滚轮] {direction}")
+            last_scroll_direction = direction
+            last_scroll_count = 1
+            last_scroll_time = current_time
     
     monitor.key_pressed.connect(on_key_press)
     monitor.key_released.connect(on_key_release)

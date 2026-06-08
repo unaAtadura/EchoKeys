@@ -29,7 +29,9 @@ class KeyMouseMonitor(QObject):
             'Key.menu',
             'Key.alt_gr'
         }
-        self.last_scroll_time = None
+        self.count_special_keys = {
+            'space', 'enter', 'backspace', 'delete', 'up', 'down', 'left', 'right'
+        }
 
     def start(self):
         if self.is_monitoring:
@@ -125,6 +127,12 @@ class KeyMouseMonitor(QObject):
     def on_keyboard_press(self, key):
         try:
             key_str = self.format_key(key)
+            key_name = key_str.replace('Key.', '')
+            
+            if key_name in self.count_special_keys:
+                self.key_pressed.emit(key_str)
+                return
+            
             if key_str in self.pressed_keys:
                 return
             self.pressed_keys.add(key_str)
@@ -180,12 +188,6 @@ class KeyMouseMonitor(QObject):
 
     def on_mouse_scroll_callback(self, x, y, dx, dy):
         try:
-            current_time = datetime.now()
-            if self.last_scroll_time is not None:
-                time_diff = (current_time - self.last_scroll_time).total_seconds()
-                if time_diff < 1.0:
-                    return
-            self.last_scroll_time = current_time
             self.mouse_scrolled.emit(str(x), str(y), str(dx), str(dy))
         except Exception as e:
             print(f"Scroll error: {e}")
