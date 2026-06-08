@@ -1,6 +1,7 @@
 from datetime import datetime
 from PyQt5.QtCore import QObject, pyqtSignal
 from pynput import keyboard, mouse
+import re
 
 
 class KeyMouseMonitor(QObject):
@@ -31,6 +32,14 @@ class KeyMouseMonitor(QObject):
         }
         self.count_special_keys = {
             'space', 'enter', 'backspace', 'delete', 'up', 'down', 'left', 'right'
+        }
+        self.special_key_names = {
+            'tab', 'escape', 'insert', 'home', 'end', 'page_up', 'page_down',
+            'caps_lock', 'num_lock', 'scroll_lock', 'print_screen', 'pause',
+            'f1', 'f2', 'f3', 'f4', 'f5', 'f6', 'f7', 'f8', 'f9', 'f10', 'f11', 'f12'
+        }
+        self.modifier_key_names = {
+            'ctrl', 'shift', 'alt', 'cmd', 'fn', 'menu'
         }
 
     def start(self):
@@ -124,12 +133,36 @@ class KeyMouseMonitor(QObject):
         except:
             return str(key)
 
+    def is_alphanum_or_symbol(self, key_str):
+        lower_key = key_str.lower().strip()
+        if ' + ' in lower_key:
+            return False
+        for mod in self.modifier_key_names:
+            if lower_key.startswith(mod + '_l') or lower_key.startswith(mod + '_r'):
+                return False
+        if lower_key in self.modifier_key_names:
+            return False
+        if lower_key in self.special_key_names:
+            return False
+        if lower_key.startswith('numpad'):
+            return True
+        if len(lower_key) == 1:
+            if lower_key.isalnum():
+                return True
+            if re.match(r'[!@#$%^&*()_+\-=\[\]{};\\:"\'|,.<>/?`~]', lower_key):
+                return True
+        return False
+
     def on_keyboard_press(self, key):
         try:
             key_str = self.format_key(key)
             key_name = key_str.replace('Key.', '')
             
             if key_name in self.count_special_keys:
+                self.key_pressed.emit(key_str)
+                return
+            
+            if self.is_alphanum_or_symbol(key_name):
                 self.key_pressed.emit(key_str)
                 return
             

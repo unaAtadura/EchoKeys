@@ -150,6 +150,9 @@ def main():
     last_special_key = None
     last_special_key_count = 0
     last_special_key_time = None
+    last_alphanum_key = None
+    last_alphanum_count = 0
+    last_alphanum_time = None
     last_scroll_direction = None
     last_scroll_count = 0
     last_scroll_time = None
@@ -251,6 +254,7 @@ def main():
     def show_key_dialog(key_str):
         nonlocal last_key_time, last_key_is_alphanum
         nonlocal last_special_key, last_special_key_count, last_special_key_time
+        nonlocal last_alphanum_key, last_alphanum_count, last_alphanum_time
         
         current_time = datetime.now()
         current_is_alphanum = is_alphanum_or_symbol(key_str)
@@ -258,6 +262,7 @@ def main():
         
         should_merge = False
         should_count = False
+        should_count_alphanum = False
         
         if dialogs and last_key_time is not None:
             time_diff = (current_time - last_key_time).total_seconds()
@@ -271,7 +276,23 @@ def main():
                     should_count = True
                     last_special_key_count += 1
         
-        if should_merge:
+        if current_is_alphanum and dialogs:
+            if last_alphanum_key == key_str and last_alphanum_time is not None:
+                time_diff = (current_time - last_alphanum_time).total_seconds()
+                if time_diff < 1.0:
+                    should_count_alphanum = True
+                    should_merge = False
+                    last_alphanum_count += 1
+        
+        if should_count_alphanum:
+            latest_dialog = dialogs[-1]
+            display_text = f"{key_str} x{last_alphanum_count}"
+            latest_dialog.set_text(display_text)
+            latest_dialog.stop_destroy_timer()
+            latest_dialog.start_destroy_timer(5)
+            update_dialog_positions()
+            last_alphanum_time = current_time
+        elif should_merge:
             latest_dialog = dialogs[-1]
             current_text = latest_dialog.label.text()
             new_text = current_text + key_str
@@ -313,10 +334,23 @@ def main():
                 last_special_key = key_str
                 last_special_key_count = 1
                 last_special_key_time = current_time
+                last_alphanum_key = None
+                last_alphanum_count = 0
+                last_alphanum_time = None
+            elif current_is_alphanum:
+                last_alphanum_key = key_str
+                last_alphanum_count = 1
+                last_alphanum_time = current_time
+                last_special_key = None
+                last_special_key_count = 0
+                last_special_key_time = None
             else:
                 last_special_key = None
                 last_special_key_count = 0
                 last_special_key_time = None
+                last_alphanum_key = None
+                last_alphanum_count = 0
+                last_alphanum_time = None
         
         last_key_time = current_time
         last_key_is_alphanum = current_is_alphanum
