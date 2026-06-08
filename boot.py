@@ -158,6 +158,9 @@ def update_venv_dependencies(project_dir: Path):
         logger.warning(f"未找到 {REQUIREMENTS_FILE}，跳过依赖更新。")
     
     current_hash = get_requirements_hash(project_dir)
+    marker_installed = venv_path / ".installed"
+    if not marker_installed.exists():
+        marker_installed.touch()
     (venv_path / ".requirements_hash").write_text(current_hash)
     logger.info("依赖更新完成，哈希标记已更新。")
     return True
