@@ -41,12 +41,6 @@
 - Python 3.8+
 - Windows 系统
 
-### 安装依赖
-
-```bash
-pip install -r requirements.txt
-```
-
 依赖包：
 - **PyQt5** - GUI 框架
 - **pynput** - 键鼠监听库
@@ -55,7 +49,18 @@ pip install -r requirements.txt
 
 ### 运行程序
 
+**方法一：使用 boot.py 启动器（推荐）**
+
+启动器会自动管理虚拟环境、安装依赖，并在后台静默启动程序（无控制台窗口）。
+
 ```bash
+python boot.py
+```
+
+**方法二：使用全局 Python 解释器**
+
+```bash
+pip install -r requirements.txt
 python EchoKeys.py
 ```
 
