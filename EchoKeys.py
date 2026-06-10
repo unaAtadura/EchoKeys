@@ -353,6 +353,12 @@ def main():
             latest_dialog.stop_destroy_timer()
             latest_dialog.start_destroy_timer(5)
             update_dialog_positions()
+            last_alphanum_key = key_str
+            last_alphanum_time = current_time
+            last_alphanum_count = 1
+            last_special_key = None
+            last_special_key_count = 0
+            last_special_key_time = None
         elif should_count:
             latest_dialog = dialogs[-1]
             display_text = f"{key_str} x{last_special_key_count}"
