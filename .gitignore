@@ -24,6 +24,10 @@ env/
 *.log
 logs/
 
+# PyInstaller
+build/
+dist/
+
 # OS
 .DS_Store
 Thumbs.db
