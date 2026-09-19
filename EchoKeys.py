@@ -15,12 +15,14 @@ from tools.Log import LogWindow
 from tools.Dialog import DialogWindow
 from tools.key_mouse_monitor import KeyMouseMonitor
 from tools.mouse_highlight import MouseHighlightWindow
+from tools.mouse_trail import MouseTrailWindow
 from tools.ToolTip import ToolTipWindow
 from PyQt5.QtCore import pyqtSignal
 
 
 class CircleWindow(QWidget):
     position_changed = pyqtSignal()
+    visibility_changed = pyqtSignal(bool)
 
     def __init__(self):
         super().__init__()
@@ -35,6 +37,12 @@ class CircleWindow(QWidget):
         self.setWindowFlags(flags)
         self.setAttribute(Qt.WA_TranslucentBackground, True)
         self.setWindowOpacity(0.7)
+    def showEvent(self, event):
+        self.visibility_changed.emit(True)
+        super().showEvent(event)
+    def hideEvent(self, event):
+        self.visibility_changed.emit(False)
+        super().hideEvent(event)
     def paintEvent(self, event):
         painter = QPainter(self)
         painter.setRenderHint(QPainter.Antialiasing)
@@ -134,7 +142,7 @@ def try_load_icon_from_file(file_path):
             return QIcon(pixmap)
     return None
 
-def create_tray_icon(app, window, log_window):
+def create_tray_icon(app, window, log_window, toggle_recording_callback):
     import os
     icon_path = os.path.join(os.path.dirname(sys.argv[0]) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), "icon.png")
     icon = try_load_icon_from_file(icon_path)
@@ -144,14 +152,22 @@ def create_tray_icon(app, window, log_window):
     tray_icon.setIcon(icon)
     tray_icon.setToolTip("EchoKeys")
     menu = QMenu()
-    show_action = QAction("显示窗口", app)
-    show_action.triggered.connect(window.show)
-    show_action.triggered.connect(window.raise_)
-    show_action.triggered.connect(window.activateWindow)
-    menu.addAction(show_action)
-    hide_action = QAction("隐藏窗口", app)
-    hide_action.triggered.connect(window.hide)
-    menu.addAction(hide_action)
+    toggle_show_action = QAction("显示窗口", app)
+    def toggle_window_visibility():
+        if window.isVisible():
+            window.hide()
+        else:
+            window.show()
+            window.raise_()
+            window.activateWindow()
+    def update_show_action_text(visible):
+        toggle_show_action.setText("隐藏窗口" if visible else "显示窗口")
+    toggle_show_action.triggered.connect(toggle_window_visibility)
+    window.visibility_changed.connect(update_show_action_text)
+    menu.addAction(toggle_show_action)
+    toggle_record_action = QAction("停止录制", app)
+    toggle_record_action.triggered.connect(toggle_recording_callback)
+    menu.addAction(toggle_record_action)
     log_action = QAction("日志", app)
     log_action.triggered.connect(log_window.show)
     log_action.triggered.connect(log_window.raise_)
@@ -172,7 +188,7 @@ def create_tray_icon(app, window, log_window):
                 window.raise_()
                 window.activateWindow()
     tray_icon.activated.connect(on_tray_activated)
-    return tray_icon
+    return tray_icon, toggle_record_action
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
@@ -189,6 +205,7 @@ def main():
     
     monitor = KeyMouseMonitor()
     mouse_highlight = MouseHighlightWindow()
+    mouse_trail = MouseTrailWindow()
     
     CIRCLE_DIAMETER = 80
     CIRCLE_HEIGHT = 80
@@ -216,14 +233,34 @@ def main():
         timestamp = datetime.now().strftime("%H:%M:%S.%f")[:-3]
         log_history.append((timestamp, message, color))
     
+    # 录制状态：托盘「停止录制/继续录制」按钮主动停止的优先级高于日志窗口联动
+    recording_paused_by_button = False
+    
+    def update_toggle_record_text():
+        toggle_record_action.setText("停止录制" if monitor.is_monitoring else "继续录制")
+    
+    def toggle_recording():
+        nonlocal recording_paused_by_button
+        if monitor.is_monitoring:
+            recording_paused_by_button = True
+            monitor.stop()
+        else:
+            recording_paused_by_button = False
+            monitor.start()
+        update_toggle_record_text()
+    
     def on_log_window_opened():
         log_window.clear_log()
         for timestamp, message, color in log_history:
             log_window.append_log_with_timestamp(timestamp, message, color)
         monitor.stop()
+        update_toggle_record_text()
     
     def on_log_window_closed():
+        if recording_paused_by_button:
+            return
         monitor.start()
+        update_toggle_record_text()
     
     log_window.window_opened.connect(on_log_window_opened)
     log_window.window_closed.connect(on_log_window_closed)
@@ -481,6 +518,7 @@ def main():
     monitor.mouse_pressed.connect(on_mouse_press)
     monitor.mouse_scrolled.connect(on_mouse_scroll)
     monitor.mouse_moved.connect(mouse_highlight.on_mouse_move)
+    monitor.mouse_moved.connect(mouse_trail.on_mouse_move)
     monitor.left_pressed.connect(mouse_highlight.on_left_press)
     monitor.left_released.connect(mouse_highlight.on_left_release)
     monitor.right_pressed.connect(mouse_highlight.on_right_press)
@@ -488,7 +526,7 @@ def main():
     
     monitor.start()
     
-    tray_icon = create_tray_icon(app, window, log_window)
+    tray_icon, toggle_record_action = create_tray_icon(app, window, log_window, toggle_recording)
     tray_icon.show()
     window.show()
     
