@@ -50,6 +50,7 @@ class MouseTrailWindow(QOpenGLWidget):
 
     def __init__(self, parent=None):
         super().__init__(parent)
+        self._enabled = False          # 启停开关：与「打水漂」方案互斥切换
         self._particles = []           # 存活粒子列表
         self._last_pos = None          # 上一次鼠标位置 (x, y)，用于计算运动方向与速度
         self._clock = QElapsedTimer()  # 测量每帧真实时间间隔 dt，保证衰减与帧率无关
@@ -74,9 +75,26 @@ class MouseTrailWindow(QOpenGLWidget):
         self.hide()
 
     # ------------------------------------------------------------------
+    # 对外接口：启用 / 停用（与「打水漂」方案互斥切换，语义对齐 RippleController）
+    # ------------------------------------------------------------------
+    def start_trail(self):
+        """启用：恢复对 mouse_moved 信号的响应。重复调用无副作用。"""
+        self._enabled = True
+
+    def stop_trail(self):
+        """停用：立即清空粒子、停帧循环并隐藏窗口（清屏无残留）。"""
+        self._enabled = False
+        self._timer.stop()
+        self._particles.clear()
+        self._last_pos = None
+        self.hide()
+
+    # ------------------------------------------------------------------
     # 主程序信号槽入口
     # ------------------------------------------------------------------
     def on_mouse_move(self, x, y):
+        if not self._enabled:
+            return
         # 与项目现有窗口一致：忽略监听线程的物理坐标，
         # 统一用 QCursor 的 Qt 逻辑坐标，规避高 DPI 换算差异
         pos = QCursor.pos()
@@ -232,6 +250,7 @@ class MouseTrailWindow(QOpenGLWidget):
 def main():
     app = QApplication(sys.argv)
     window = MouseTrailWindow()
+    window.start_trail()
     # 独立运行预览：overlay 对鼠标输入透明收不到鼠标事件，改用 QCursor 轮询驱动
     probe_timer = QTimer()
     probe_timer.setInterval(FRAME_INTERVAL_MS)

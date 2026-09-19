@@ -16,6 +16,7 @@ from tools.Dialog import DialogWindow
 from tools.key_mouse_monitor import KeyMouseMonitor
 from tools.mouse_highlight import MouseHighlightWindow
 from tools.mouse_trail import MouseTrailWindow
+from tools.water_skip import RippleController
 from tools.ToolTip import ToolTipWindow
 from PyQt5.QtCore import pyqtSignal
 
@@ -142,7 +143,7 @@ def try_load_icon_from_file(file_path):
             return QIcon(pixmap)
     return None
 
-def create_tray_icon(app, window, log_window, toggle_recording_callback):
+def create_tray_icon(app, window, log_window, toggle_recording_callback, toggle_trail_callback):
     import os
     icon_path = os.path.join(os.path.dirname(sys.argv[0]) if getattr(sys, 'frozen', False) else os.path.dirname(os.path.abspath(__file__)), "icon.png")
     icon = try_load_icon_from_file(icon_path)
@@ -168,6 +169,9 @@ def create_tray_icon(app, window, log_window, toggle_recording_callback):
     toggle_record_action = QAction("停止录制", app)
     toggle_record_action.triggered.connect(toggle_recording_callback)
     menu.addAction(toggle_record_action)
+    toggle_trail_action = QAction("切换轨迹（当前：打水漂）", app)
+    toggle_trail_action.triggered.connect(toggle_trail_callback)
+    menu.addAction(toggle_trail_action)
     log_action = QAction("日志", app)
     log_action.triggered.connect(log_window.show)
     log_action.triggered.connect(log_window.raise_)
@@ -188,7 +192,7 @@ def create_tray_icon(app, window, log_window, toggle_recording_callback):
                 window.raise_()
                 window.activateWindow()
     tray_icon.activated.connect(on_tray_activated)
-    return tray_icon, toggle_record_action
+    return tray_icon, toggle_record_action, toggle_trail_action
 def main():
     app = QApplication(sys.argv)
     app.setQuitOnLastWindowClosed(False)
@@ -206,6 +210,25 @@ def main():
     monitor = KeyMouseMonitor()
     mouse_highlight = MouseHighlightWindow()
     mouse_trail = MouseTrailWindow()
+    water_skip = RippleController()
+    
+    # 轨迹方案切换：water_skip=打水漂落点（默认），comet=彗星粒子拖尾
+    active_trail_mode = "water_skip"
+    water_skip.start()
+    
+    def toggle_trail_mode():
+        nonlocal active_trail_mode
+        # 先停用当前方案再启用目标方案，保证两套效果不叠加
+        if active_trail_mode == "water_skip":
+            water_skip.stop()
+            mouse_trail.start_trail()
+            active_trail_mode = "comet"
+            toggle_trail_action.setText("切换轨迹（当前：彗星拖尾）")
+        else:
+            mouse_trail.stop_trail()
+            water_skip.start()
+            active_trail_mode = "water_skip"
+            toggle_trail_action.setText("切换轨迹（当前：打水漂）")
     
     CIRCLE_DIAMETER = 80
     CIRCLE_HEIGHT = 80
@@ -526,7 +549,7 @@ def main():
     
     monitor.start()
     
-    tray_icon, toggle_record_action = create_tray_icon(app, window, log_window, toggle_recording)
+    tray_icon, toggle_record_action, toggle_trail_action = create_tray_icon(app, window, log_window, toggle_recording, toggle_trail_mode)
     tray_icon.show()
     window.show()
     

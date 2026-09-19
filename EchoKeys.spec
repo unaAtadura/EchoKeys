@@ -14,6 +14,8 @@ a = Analysis(
         'tools.key_mouse_monitor',
         'tools.mouse_highlight',
         'tools.ToolTip',
+        'tools.mouse_trail',
+        'tools.water_skip',
     ],
     hookspath=[],
     hooksconfig={},
