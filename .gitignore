@@ -31,3 +31,6 @@ dist/
 # OS
 .DS_Store
 Thumbs.db
+
+# 样例代码
+.reference_projects/
